@@ -41,7 +41,7 @@ function awpwkb:on_unmanage(c)
 end
 
 -- Update cacked layout on xkb change
-function awpwkb:on_change()
+function awpwkb:on_xkb_change()
    self:update_layouts()
    if capi.client.focus ~= nil then
       self.clients[capi.client.focus.window] = awesome.xkb_get_layout_group()
@@ -70,8 +70,8 @@ function awpwkb:on_manage(c)
    -- Sometimes first focus signal isn't triggered
    if capi.client.focus and capi.client.focus.window == c.window then
       awesome.xkb_set_layout_group(layout_idx)
+      self.current_idx = layout_idx
    end
-   self.current_idx = layout_idx
    self:layout_changed()
 end
 
@@ -182,8 +182,8 @@ function awpwkb.new(opts)
    capi.client.connect_signal("focus", function(c) obj:on_focus(c) end)
    capi.client.connect_signal("unmanage", function(c) obj:on_unmanage(c) end)
    capi.client.connect_signal("manage", function(c) obj:on_manage(c) end)
-   capi.awesome.connect_signal("xkb::map_changed", function(c) obj:on_change() end)
-   capi.awesome.connect_signal("xkb::group_changed", function(c) obj:on_change() end)
+   capi.awesome.connect_signal("xkb::map_changed", function(c) obj:on_xkb_change() end)
+   capi.awesome.connect_signal("xkb::group_changed", function(c) obj:on_xkb_change() end)
 
    return obj
 end
