@@ -133,6 +133,7 @@ function awpwkb:update_layouts()
    )
 end
 
+-- Set layout by name
 function awpwkb:set_layout(name)
    local layout_idx = self:find_layout_idx_by_name(name)
    if layout_idx ~= nil then
@@ -146,6 +147,24 @@ function awpwkb:set_layout(name)
       -- Layout isn't fount - it is error
       gears.debug.print_error("Layout not found")
    end
+end
+
+-- Set next layout
+function awpwkb:set_next_layout()
+   self:inc_layout(1)
+end
+
+-- Set previous layout
+function awpwkb:set_prev_layout()
+   self:inc_layout(-1)
+end
+
+-- Set layout by relative index
+function awpwkb:inc_layout(num)
+   local idx = (self.current_idx + num) % #self.layouts
+   awesome.xkb_set_layout_group(idx)
+   self.current_idx = idx
+   self:layout_changed()
 end
 
 -- Get current layout name and index
