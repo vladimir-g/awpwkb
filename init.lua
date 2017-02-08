@@ -56,7 +56,12 @@ function awpwkb:on_manage(c)
    -- Check rules
    for _, v in pairs(self.rules) do
       if rules.matches(c, v) then
-         layout_idx = self:find_layout_idx_by_name(v.layout) -- FIXME add idx to rules
+         if v.layout.index ~= nil then
+            -- FIXME check if index is valid
+            layout_idx = v.layout.index
+         elseif v.layout.name ~= nil then
+            layout_idx = self:find_layout_idx_by_name(v.layout.name)
+         end
          break
       end
    end
