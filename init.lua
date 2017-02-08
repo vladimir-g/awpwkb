@@ -12,6 +12,7 @@ local capi = {
    client = client,
    awesome = awesome
 }
+local gears = require("gears")
 local rules = require("awful.rules")
 local keyboardlayout = require("awful.widget.keyboardlayout")
 
@@ -22,15 +23,14 @@ local awpwkb = {}
 function awpwkb:on_focus(c)
    local id = c.window
    -- Check if we have layout already
-   local layout = self.clients[id]
-   -- FIXME Check if layout is valid
-   if layout ~= nil then
+   local layout_idx = self.clients[id]
+   if layout_idx ~= nil and self:is_valid_layout(layout_idx) then
       -- Set saved layout
-      awesome.xkb_set_layout_group(self.clients[id])
-      self.current_idx = self.clients[id]
+      awesome.xkb_set_layout_group(layout_idx)
+      self.current_idx = layout_idx
       self:layout_changed()
    else
-      -- Save layout
+      -- Save current layout
       self.clients[id] = awesome.xkb_get_layout_group()
    end
 end
@@ -57,17 +57,17 @@ function awpwkb:on_manage(c)
    for _, v in pairs(self.rules) do
       if rules.matches(c, v) then
          if v.layout.index ~= nil then
-            -- FIXME check if index is valid
-            layout_idx = v.layout.index
+            if self:is_valid_layout(v.layout.index) then
+               layout_idx = v.layout.index
+            end
          elseif v.layout.name ~= nil then
             layout_idx = self:find_layout_idx_by_name(v.layout.name)
          end
          break
       end
    end
-   -- FIXME check if layout is valid
    -- Set default if rules don't apply
-   if layout_idx == nil then
+   if layout_idx == nil or not self:is_valid_layout(layout_idx) then
       layout_idx = self.default_layout
    end
    self.clients[c.window] = layout_idx
@@ -108,6 +108,11 @@ function awpwkb:find_layout_by_idx(idx)
    end
 end
 
+-- Check if layout index is valid
+function awpwkb:is_valid_layout(idx)
+   return idx >= 0 and idx < #self.layouts
+end
+
 -- Return layout list
 function awpwkb:get_layouts()
    local list = {}
@@ -137,20 +142,21 @@ function awpwkb:set_layout(name)
       awesome.xkb_set_layout_group(layout_idx)
       self.current_idx = layout_idx
       self:layout_changed()
+   else
+      -- Layout isn't fount - it is error
+      gears.debug.print_error("Layout not found")
    end
-   -- FIXME report error if layout not found
 end
 
 -- Get current layout name and index
 function awpwkb:get_current_layout()
    if self.current_idx ~= nil then
       local layout = self:find_layout_by_idx(self.current_idx)
-      -- FIXME check if layout exists
       if layout ~= nil then
          return layout
       end
    end
-   return nil         
+   return nil
 end
 
 -- Callbacks
