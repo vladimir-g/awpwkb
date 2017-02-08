@@ -27,6 +27,8 @@ function awpwkb:on_focus(c)
    if layout ~= nil then
       -- Set saved layout
       awesome.xkb_set_layout_group(self.clients[id])
+      self.current_idx = self.clients[id]
+      self:layout_changed()
    else
       -- Save layout
       self.clients[id] = awesome.xkb_get_layout_group()
@@ -44,6 +46,8 @@ function awpwkb:on_change()
    if capi.client.focus ~= nil then
       self.clients[capi.client.focus.window] = awesome.xkb_get_layout_group()
    end
+   self.current_idx = awesome.xkb_get_layout_group()
+   self:layout_changed()
 end
 
 -- Need to select default layout on manage
@@ -52,7 +56,7 @@ function awpwkb:on_manage(c)
    -- Check rules
    for _, v in pairs(self.rules) do
       if rules.matches(c, v) then
-         layout_idx = self:find_layout_idx_by_name(v.layout)
+         layout_idx = self:find_layout_idx_by_name(v.layout) -- FIXME add idx to rules
          break
       end
    end
@@ -67,6 +71,8 @@ function awpwkb:on_manage(c)
    if capi.client.focus and capi.client.focus.window == c.window then
       awesome.xkb_set_layout_group(layout_idx)
    end
+   self.current_idx = layout_idx
+   self:layout_changed()
 end
 
 -- Create layout name from layout. Taken from kayboardlayout widget.
@@ -86,6 +92,15 @@ function awpwkb:find_layout_idx_by_name(name)
       end
    end
    return nil
+end
+
+-- Get layout by index
+function awpwkb:find_layout_by_idx(idx)
+   for _, layout in pairs(self:get_layouts()) do
+      if layout.idx == idx then
+         return layout
+      end
+   end
 end
 
 -- Return layout list
@@ -115,8 +130,34 @@ function awpwkb:set_layout(name)
          self.clients[capi.client.focus.window] = layout_idx
       end
       awesome.xkb_set_layout_group(layout_idx)
+      self.current_idx = layout_idx
+      self:layout_changed()
    end
    -- FIXME report error if layout not found
+end
+
+-- Get current layout name and index
+function awpwkb:get_current_layout()
+   if self.current_idx ~= nil then
+      local layout = self:find_layout_by_idx(self.current_idx)
+      -- FIXME check if layout exists
+      if layout ~= nil then
+         return layout
+      end
+   end
+   return nil         
+end
+
+-- Callbacks
+-- Inner function to run changed callback
+function awpwkb:layout_changed()
+   if self.on_layout_change == nil then
+      return
+   end
+   local layout = self:get_current_layout()
+   if layout ~= nil then
+      self.on_layout_change(layout)
+   end
 end
 
 -- Create new instance of awpwkb. Don't use it directly.
