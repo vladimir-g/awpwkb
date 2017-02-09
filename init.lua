@@ -19,15 +19,44 @@ local keyboardlayout = require("awful.widget.keyboardlayout")
 
 local awpwkb = {}
 
+-- Match rules list and get layout index
+function awpwkb:match_rules(c, rules_list)
+   local layout_idx = nil
+   for _, v in pairs(rules_list) do
+      if rules.matches(c, v) then
+         if v.layout.index ~= nil then
+            if self:is_valid_layout(v.layout.index) then
+               layout_idx = v.layout.index
+            end
+         elseif v.layout.name ~= nil then
+            layout_idx = self:find_layout_idx_by_name(v.layout.name)
+         end
+         break
+      end
+   end
+   return layout_idx
+end
+
 -- Change layout on focus if it was saved already
 function awpwkb:on_focus(c)
    local id = c.window
-   -- Check if we have layout already
-   local layout_idx = self.clients[id]
+   local layout_idx = nil
+
+   -- Check if we have focus rules
+   if self.focus_rules then
+      layout_idx = self:match_rules(c, self.focus_rules)
+   end
+
+   -- Get saved layout (or nil)
+   if layout_idx == nil then
+      layout_idx = self.clients[id]
+   end
+
    if layout_idx ~= nil and self:is_valid_layout(layout_idx) then
       -- Set saved layout
       awesome.xkb_set_layout_group(layout_idx)
       self.current_idx = layout_idx
+      self.clients[id] = layout_idx
       self:layout_changed()
    else
       -- Save current layout
@@ -53,19 +82,11 @@ end
 -- Need to select default layout on manage
 function awpwkb:on_manage(c)
    local layout_idx = nil
-   -- Check rules
-   for _, v in pairs(self.rules) do
-      if rules.matches(c, v) then
-         if v.layout.index ~= nil then
-            if self:is_valid_layout(v.layout.index) then
-               layout_idx = v.layout.index
-            end
-         elseif v.layout.name ~= nil then
-            layout_idx = self:find_layout_idx_by_name(v.layout.name)
-         end
-         break
-      end
+   -- Check  rules
+   if self.default_rules then
+      layout_idx = self:match_rules(c, self.default_rules)
    end
+
    -- Set default if rules don't apply
    if layout_idx == nil or not self:is_valid_layout(layout_idx) then
       layout_idx = self.default_layout
@@ -202,7 +223,8 @@ function awpwkb.new(opts)
    obj.opts = opts
 
    -- Rules
-   obj.rules = opts.rules or {}
+   obj.default_rules = opts.default_rules
+   obj.focus_rules = opts.focus_rules
 
    -- Update layouts for first time (maybe it isn't really needed)
    obj:update_layouts()
