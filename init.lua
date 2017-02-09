@@ -181,20 +181,22 @@ end
 -- Callbacks
 -- Inner function to run changed callback
 function awpwkb:layout_changed()
-   if self.on_layout_change == nil then
-      return
-   end
    local layout = self:get_current_layout()
    if layout ~= nil then
-      self.on_layout_change(layout)
+      if self.on_layout_change ~= nil then
+         self.on_layout_change(layout)
+      end
+      self:emit_signal("on_layout_change", layout)
    end
 end
 
 -- Create new instance of awpwkb. Don't use it directly.
 function awpwkb.new(opts)
    opts = opts or {}
-   local obj = { clients = {} }
-   setmetatable(obj, { __index = awpwkb })
+
+   -- Create new object from gears.object for signals support
+   local obj = gears.object { class = awpwkb }
+   obj.clients = {}
 
    -- Save opts, maybe they'll be needed in future
    obj.opts = opts
