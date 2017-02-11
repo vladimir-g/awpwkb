@@ -244,12 +244,15 @@ end
 
 local instance = nil
 
--- Get instance of awpwkb. Opts would work only on first call.
-function awpwkb.init(opts)
-   if instance == nil then
-      instance = awpwkb.new(opts)
-   end
+-- Get instance of awpwkb. Init must be run before.
+function awpwkb.get()
    return instance
+end
+
+-- Init instance of awpwkb.
+function awpwkb.init(opts)
+   instance = awpwkb.new(opts)
+   return instance;
 end
 
 return awpwkb
