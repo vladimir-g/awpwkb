@@ -1,0 +1,158 @@
+* awpwkb
+
+Awpwkb is a simple per-window keyboard layout switcher for [[https://awesomewm.org/][Awesome WM]].
+
+It uses awesome XKB functions, so awesome 4 is required.
+
+** Install
+
+Download the source code and move it to awesome configuration
+directory:
+
+#+BEGIN_EXAMPLE
+mv awpwkb $XDG_CONFIG_HOME/awesome/
+#+END_EXAMPLE
+
+Now load the module at the top of =rc.lua=:
+
+#+BEGIN_SRC lua
+awpwkb = require("awpwkb")
+#+END_SRC
+
+** Usage
+
+Awpwkb object stores state in single main instance that could be used
+in any place after initialization. Init method must be run before
+first usage.
+
+Simple example:
+
+#+BEGIN_SRC lua
+-- at top of rc.lua
+awpwkb = require("awpwkb")
+
+kb = awpwkb.init()
+-- somewhere in code later if needed
+kb = awpwkb.get() -- returns already initialized instance
+#+END_SRC
+
+Init method also can receive options for customization.
+
+** Widgets
+
+Standard =awful.widget.keyboardlayout= works well with awpwkb without
+any customization.
+
+Example of more complex widget that uses some methods from awpwkb:
+
+#+BEGIN_SRC lua
+kb = awpwkb.get()
+-- add popup menu with layout list
+local menu_layouts = {}
+for i, l in pairs(kb:get_layouts()) do
+   menu_layouts[i] = { l.name, function () kb:set_layout(l.name) end }
+end
+local kbmenu = awful.menu({ items = menu_layouts })
+-- create textbox widget
+local kbind = wibox.widget.textbox()
+kbind:buttons(
+   awful.util.table.join(
+      awful.button({ }, 1, function() kb:set_next_layout() end),
+      awful.button({ }, 2, function() kb:set_prev_layout() end),
+      awful.button({ }, 3, function() kbmenu:toggle() end)
+   )
+)
+-- change markup on layout change
+kb.on_layout_change = function (layout)
+   kbind:set_markup(' <b>[' .. layout.name .. ']</b> ')
+end
+-- add kb widget to some wibox later
+#+END_SRC
+
+** Reference
+
+Awpwkb has some customization options that can be provided to init
+function. Example:
+
+#+BEGIN_SRC lua
+awpwkb.init({
+   default_layout = "en",
+   default_rules = {
+       { rule = { class = "psi" }, layout = { name = "ru"} }
+   },
+   -- other options
+})
+#+END_SRC
+
+*** Options
+
+Awpwkb can use rules to change layout of clients on start or on
+focus. Internally =awful.rules= matcher is used so rules have same
+syntax and options as standard awesome's ones. Only real difference is
+layout option. Example rules list:
+
+#+BEGIN_SRC lua
+{
+ { rule = { class = "someclass" }, layout = { name = "de" } },
+ { rule_any = { class = { "app1", "app2" } }, layout = { index = 1 } },
+ -- etc
+}
+#+END_SRC
+
+Layout element is a table that have =name= or =index= key. Name is the
+name of layout as it returned from XKB (like in keyboard
+widget). Index is the layout's index, starting with zero. Same index
+used internally in =awesome.xkb_set_layout_group=.
+
+If =name= and =index= both supplied in layout table, =index= has a
+priority.
+
+Available rule lists:
+
+- default_rules :: rules that applied to client on startup.
+- focus_rules :: rules that applied to client on every focus.
+
+Other options:
+
+- default_layout :: name of default layout for new windows. Rules have
+                    priority over this option.
+
+*** Methods
+
+- on_layout_change(layout) :: triggers on every layout
+     change. Receives table that contains three keys: =idx= (index of
+     layout), =name= (name of layout) and =layout= (layout data from
+     keyboardlayout widget).
+     Example usage:
+#+BEGIN_SRC lua
+kb = awpwkb.get()
+kb.on_layout_change = function (layout)
+   print("Switched to " .. layout.name .. ", index: " .. layout.idx)
+end
+#+END_SRC
+
+- set_layout(layout_name) :: set specified layout (using name string)
+- set_next_layout() :: set next layout
+- set_prev_layout() :: set previous layout
+- get_current_layout() :: returns current layout (table as in
+     =on_layout_change=)
+- get_layouts() :: returns list of available layouts
+
+*** Signals
+
+Awpwkb also provides signal for listening to layout changes. With that
+signal it is possible to have multiple different listeners to layout
+changes.
+
+- on_layout_change(kb_instance, layout) :: triggers on every layout
+     change, same as =on_layout_change= method. Example:
+#+BEGIN_SRC lua
+kb = awpwkb.get()
+kb:connect_signal("on_layout_change", function (kb, layout)
+   print("Switched to " .. layout.name .. ", index: " .. layout.idx)
+end
+#+END_SRC
+
+** License
+
+AWPWKB is licensed under WTFPL. I like how this sounds.
