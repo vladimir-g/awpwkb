@@ -97,8 +97,7 @@ function awpwkb:on_manage(c)
 
    -- Sometimes first focus signal isn't triggered
    if capi.client.focus and capi.client.focus.window == c.window then
-      awesome.xkb_set_layout_group(layout_idx)
-      self.current_idx = layout_idx
+      self:on_focus(c)
    end
    self:layout_changed()
 end
