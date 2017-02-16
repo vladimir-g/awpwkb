@@ -14,10 +14,10 @@ local capi = {
    client = client,
    awesome = awesome
 }
+local awful = require("awful")
 local gears = require("gears")
 local rules = require("awful.rules")
 local keyboardlayout = require("awful.widget.keyboardlayout")
-
 
 local awpwkb = {}
 
@@ -41,8 +41,8 @@ end
 
 -- Change layout on focus if it was saved already
 function awpwkb:on_focus(c)
-   local id = c.window
    local layout_idx = nil
+   print(c.awpwkb_layout)
 
    -- Check if we have focus rules
    if self.focus_rules then
@@ -51,31 +51,25 @@ function awpwkb:on_focus(c)
 
    -- Get saved layout (or nil)
    if layout_idx == nil then
-      layout_idx = self.clients[id]
+      layout_idx = c.awpwkb_layout
    end
 
    if layout_idx ~= nil and self:is_valid_layout(layout_idx) then
       -- Set saved layout
       awesome.xkb_set_layout_group(layout_idx)
       self.current_idx = layout_idx
-      self.clients[id] = layout_idx
+      c.awpwkb_layout = layout_idx
       self:layout_changed()
    else
-      -- Save current layout
-      self.clients[id] = awesome.xkb_get_layout_group()
+      c.awpwkb_layout = self.default_layout
    end
-end
-
--- Remove cached layout on client exit
-function awpwkb:on_unmanage(c)
-   self.clients[c.window] = nil
 end
 
 -- Update cacked layout on xkb change
 function awpwkb:on_xkb_change()
    self:update_layouts()
    if capi.client.focus ~= nil then
-      self.clients[capi.client.focus.window] = awesome.xkb_get_layout_group()
+      capi.client.focus.awpwkb_layout = awesome.xkb_get_layout_group()
    end
    self.current_idx = awesome.xkb_get_layout_group()
    self:layout_changed()
@@ -89,11 +83,14 @@ function awpwkb:on_manage(c)
       layout_idx = self:match_rules(c, self.default_rules)
    end
 
-   -- Set default if rules don't apply
+   -- Get saved layout
+   layout_idx = c.awpwkb_layout
+
+   -- set default if rules don't apply
    if layout_idx == nil or not self:is_valid_layout(layout_idx) then
       layout_idx = self.default_layout
    end
-   self.clients[c.window] = layout_idx
+   c.awpwkb_layout = layout_idx
 
    -- Sometimes first focus signal isn't triggered
    if capi.client.focus and capi.client.focus.window == c.window then
@@ -160,7 +157,7 @@ function awpwkb:set_layout(name)
    local layout_idx = self:find_layout_idx_by_name(name)
    if layout_idx ~= nil then
       if capi.client.focus then
-         self.clients[capi.client.focus.window] = layout_idx
+         capi.client.focus.window.awpwkb_layout = layout_idx
       end
       awesome.xkb_set_layout_group(layout_idx)
       self.current_idx = layout_idx
@@ -218,7 +215,6 @@ function awpwkb.new(opts)
 
    -- Create new object from gears.object for signals support
    local obj = gears.object { class = awpwkb }
-   obj.clients = {}
 
    -- Save opts, maybe they'll be needed in future
    obj.opts = opts
@@ -226,6 +222,9 @@ function awpwkb.new(opts)
    -- Rules
    obj.default_rules = opts.default_rules
    obj.focus_rules = opts.focus_rules
+
+   -- Set persisten x property to check if we already got layout
+   awful.client.property.persist("awpwkb_layout", "number")
 
    -- Update layouts for first time (maybe it isn't really needed)
    obj:update_layouts()
@@ -235,7 +234,6 @@ function awpwkb.new(opts)
 
    -- Add signals
    capi.client.connect_signal("focus", function(c) obj:on_focus(c) end)
-   capi.client.connect_signal("unmanage", function(c) obj:on_unmanage(c) end)
    capi.client.connect_signal("manage", function(c) obj:on_manage(c) end)
    capi.awesome.connect_signal("xkb::map_changed", function(c) obj:on_xkb_change() end)
    capi.awesome.connect_signal("xkb::group_changed", function(c) obj:on_xkb_change() end)
