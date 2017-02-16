@@ -2,7 +2,9 @@
 
 Awpwkb is a simple per-window keyboard layout switcher for [[https://awesomewm.org/][Awesome WM]].
 
-It uses awesome XKB functions, so awesome 4 is required.
+It uses awesome XKB functions, so awesome 4 is required. Layouts
+stored in X property =awpwkb_layout= and they are persistent between
+awesome restarts.
 
 ** Install
 
