@@ -88,6 +88,11 @@ awpwkb.init({
 
 *** Options
 
+- default_layout :: name of default layout for new windows. Rules have
+                    priority over this option.
+
+**** Rules
+
 Awpwkb can use rules to change layout of clients on start or on
 focus. Internally =awful.rules= matcher is used so rules have same
 syntax and options as standard awesome's ones. Only real difference is
@@ -98,6 +103,21 @@ layout option. Example rules list:
  { rule = { class = "someclass" }, layout = { name = "de" } },
  { rule_any = { class = { "app1", "app2" } }, layout = { index = 1 } },
  -- etc
+}
+#+END_SRC
+
+If default awesome rules are not enough, there is also a
+=check_callback= parameter. It is a callback that will be executed on
+corresponding check event (=manage= or =focus=) that accepts current
+client as parameter and must return a boolean. Example:
+
+#+BEGIN_SRC lua
+{
+ { check_callback = function (c)
+      return c.name == 'name' -- do any complex check here
+   end,
+   layout = { name = "de" } },
+ -- ..
 }
 #+END_SRC
 
@@ -113,11 +133,6 @@ Available rule lists:
 
 - default_rules :: rules that applied to client on startup.
 - focus_rules :: rules that applied to client on every focus.
-
-Other options:
-
-- default_layout :: name of default layout for new windows. Rules have
-                    priority over this option.
 
 *** Methods
 

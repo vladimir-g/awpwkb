@@ -21,35 +21,45 @@ local keyboardlayout = require("awful.widget.keyboardlayout")
 
 local awpwkb = {}
 
+-- Get layout from rule by name or index
+function awpwkb:get_layout_idx_from_rule(rule)
+   if rule.layout.index ~= nil then
+      if self:is_valid_layout(rule.layout.index) then
+         return rule.layout.index
+      end
+   elseif rule.layout.name ~= nil then
+      return self:find_layout_idx_by_name(rule.layout.name)
+   end
+   return
+end
+
 -- Match rules list and get layout index
 function awpwkb:match_rules(c, rules_list)
-   local layout_idx = nil
    for _, v in pairs(rules_list) do
-      if rules.matches(c, v) then
-         if v.layout.index ~= nil then
-            if self:is_valid_layout(v.layout.index) then
-               layout_idx = v.layout.index
-            end
-         elseif v.layout.name ~= nil then
-            layout_idx = self:find_layout_idx_by_name(v.layout.name)
+      if v.check_callback ~= nil then
+         if v.check_callback(c) then
+            return self:get_layout_idx_from_rule(v)
          end
-         break
+      elseif rules.matches(c, v) then
+         return self:get_layout_idx_from_rule(v)
       end
    end
-   return layout_idx
+   return
 end
 
 -- Change layout on focus if it was saved already
 function awpwkb:on_focus(c)
-   local layout_idx = nil
-   print(c.awpwkb_layout)
+   -- Sometimes focus can trigger before manage
+   if not c.awpwkb_managed then return end
 
+   local layout_idx = nil
    -- Check if we have focus rules
-   if self.focus_rules then
+   if layout_idx == nil and self.focus_rules then
       layout_idx = self:match_rules(c, self.focus_rules)
    end
 
-   -- Get saved layout (or nil)
+   -- No rule exist, so get already stored layout because focus rules
+   -- has priority over saved
    if layout_idx == nil then
       layout_idx = c.awpwkb_layout
    end
@@ -77,21 +87,21 @@ end
 
 -- Need to select default layout on manage
 function awpwkb:on_manage(c)
-   local layout_idx = nil
-   -- Check  rules
-   if self.default_rules then
+   -- Don't do anything if window already managed
+   if c.awpwkb_managed then return end
+
+   local layout_idx = c.awpwkb_layout
+   -- Check rules
+   if layout_idx == nil and self.default_rules then
       layout_idx = self:match_rules(c, self.default_rules)
    end
 
-   -- Get saved layout
-   layout_idx = c.awpwkb_layout
-
-   -- set default if rules don't apply
-   if layout_idx == nil or not self:is_valid_layout(layout_idx) then
-      layout_idx = self.default_layout
+   -- Apply layout if it is valid
+   if layout_idx ~= nil and self:is_valid_layout(layout_idx) then
+      c.awpwkb_layout = layout_idx
    end
-   c.awpwkb_layout = layout_idx
 
+   c.awpwkb_managed = true
    -- Sometimes first focus signal isn't triggered
    if capi.client.focus and capi.client.focus.window == c.window then
       self:on_focus(c)
@@ -157,7 +167,7 @@ function awpwkb:set_layout(name)
    local layout_idx = self:find_layout_idx_by_name(name)
    if layout_idx ~= nil then
       if capi.client.focus then
-         capi.client.focus.window.awpwkb_layout = layout_idx
+         capi.client.focus.awpwkb_layout = layout_idx
       end
       awesome.xkb_set_layout_group(layout_idx)
       self.current_idx = layout_idx
@@ -225,6 +235,8 @@ function awpwkb.new(opts)
 
    -- Set persisten x property to check if we already got layout
    awful.client.property.persist("awpwkb_layout", "number")
+   -- Property to check if awpwkb already do on_manage check
+   awful.client.property.persist("awpwkb_managed", "boolean")
 
    -- Update layouts for first time (maybe it isn't really needed)
    obj:update_layouts()
