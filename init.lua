@@ -64,15 +64,15 @@ function awpwkb:on_focus(c)
       layout_idx = c.awpwkb_layout
    end
 
-   if layout_idx ~= nil and self:is_valid_layout(layout_idx) then
-      -- Set saved layout
-      awesome.xkb_set_layout_group(layout_idx)
-      self.current_idx = layout_idx
-      c.awpwkb_layout = layout_idx
-      self:layout_changed()
-   else
-      c.awpwkb_layout = self.default_layout
+   if layout_idx == nil or not self:is_valid_layout(layout_idx) then
+      layout_idx = self.default_layout
    end
+
+   -- Save layout
+   awesome.xkb_set_layout_group(layout_idx)
+   self.current_idx = layout_idx
+   c.awpwkb_layout = layout_idx
+   self:layout_changed()
 end
 
 -- Update cacked layout on xkb change
@@ -106,7 +106,6 @@ function awpwkb:on_manage(c)
    if capi.client.focus and capi.client.focus.window == c.window then
       self:on_focus(c)
    end
-   self:layout_changed()
 end
 
 -- Create layout name from layout. Taken from kayboardlayout widget.
